@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+  proxy:
+    image: nginx:stable
+    deploy:
+      restart_policy: 
+        condition: on-failure
+    ports:
+      - 8082:80
+      - 8080:8080
+    depends_on:
+      - "snipe-it"
+      - "snipe-mysql"
+    networks:
+      - net-1
+    volumes:
+      - "./nginx-service.conf:/etc/nginx/conf.d/default.conf"
+  snipe-mysql:
+    image: mysql:5.6
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    env_file:
+      - ./.env
+    volumes:
+      - snipesql-vol:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    #ports:
+    #  - "3306:3306"
+    networks:
+      - net-1
+  snipe-it:
+    image: snipe/snipe-it
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    env_file:
+      - ./.env
+        #volumes:
+        #  - "./html:/var/www/html" 
+    depends_on:
+      - snipe-mysql
+    networks:
+      - net-1
+  phpmyadmin:
+    image: phpmyadmin
+    restart: always
+    #ports:
+      #  - 8080:80
+    env_file:
+      - ./.env
+    depends_on:
+      - snipe-mysql
+    links:
+      - snipe-mysql
+    environment:
+      PMA_HOST: snipe-mysql
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - net-1
+volumes:
+  snipesql-vol:
+networks:
+  net-1:
